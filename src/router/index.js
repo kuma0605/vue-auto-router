@@ -73,18 +73,6 @@ export async function generateRoutes() {
 
       const route = {
         path: generateNestedPath(segments, fileName),
-        /* component: defineAsyncComponent({
-          loader: pages[pagePath],
-          loadingComponent: () => import('../components/LoadingSpinner.vue'),
-          delay: 200,
-          timeout: 3000,
-        }), */
-        /* component: defineAsyncComponent({
-          loader: () => pages[pagePath](),
-          loadingComponent: () => import('../components/LoadingSpinner.vue'),
-          delay: 200,
-          timeout: 3000,
-        }), */
         component: () => pages[pagePath](),
         meta: mergedMeta,
         name: jsonConfig.name || routeBlockConfig.name,
