@@ -54,7 +54,9 @@ export async function generateRoutes() {
       console.log('segments', segments)
       console.log('fileName', fileName)
       console.log('pagePath', pagePath)
-      const configPath = pagePath.replace(/\/[^/]+\.vue$/, '/route.json')
+      // 仅当页面文件是 index.vue 时才查找同级 route.json
+      const isIndexFile = pagePath.endsWith('/index.vue')
+      const configPath = isIndexFile ? pagePath.replace(/\/index\.vue$/, '/route.json') : null // 非 index 文件不查找配置文件
       console.log('configPath', configPath)
       console.log('configFiles', configFiles)
       let jsonConfig = {}
@@ -74,6 +76,8 @@ export async function generateRoutes() {
       const route = {
         path: generateNestedPath(segments, fileName),
         component: () => pages[pagePath](),
+        // 新增重定向配置支持
+        redirect: jsonConfig.redirect || routeBlockConfig.redirect,
         meta: mergedMeta,
         name: jsonConfig.name || routeBlockConfig.name,
         props: jsonConfig.props || routeBlockConfig.props,
@@ -110,7 +114,19 @@ export async function generateRoutes() {
     }
   }
 
-  console.log(routes)
+  // 根路径处理
+  // 场景一：自动处理 index.vue 生成根路由
+  // 场景二：添加默认重定向逻辑
+  console.log('routes', routes)
+  const rootRoute = routes.find((r) => r.path === '/')
+  console.log('rootRoute', rootRoute)
+  if (!rootRoute) {
+    routes.push({
+      path: '/',
+      redirect: '/home',
+      meta: { requiresAuth: false },
+    })
+  }
   return routes
 }
 
