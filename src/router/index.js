@@ -21,10 +21,11 @@ const layoutComponents = Object.entries(layouts).reduce((acc, [path, module]) =>
 async function parseRouteBlock(rawContent) {
   try {
     if (!rawContent) return {}
+    // 使用 Vue 的 SFC 编译器解析原始内容
+    // rawContent.default 处理模块的默认导出
+    // parse() 返回的 descriptor 包含解析后的 SFC 描述对象
     const { descriptor } = parse(rawContent.default || rawContent)
-    console.log('descriptor', descriptor)
     const routeBlock = descriptor.customBlocks?.find((b) => b.type === 'route')
-    console.log('routeBlock', routeBlock)
     return routeBlock ? JSON.parse(routeBlock.content) : {}
   } catch (e) {
     console.error('Failed to parse route block:', e)
@@ -39,39 +40,26 @@ export async function generateRoutes() {
   for (const pagePath of Object.keys(pages)) {
     try {
       const rawContent = await rawPages[pagePath]()
-
-      console.log('rawContent', rawContent)
       const routeBlockConfig = await parseRouteBlock(rawContent)
-      console.log('routeBlockConfig', routeBlockConfig)
       const normalizedPath = pagePath
         .replace('../views', '')
         .replace('.vue', '')
         .replace(/\/index$/, '/')
-      console.log('normalizedPath', normalizedPath)
       const segments = normalizedPath.split('/').filter(Boolean)
-      console.log('segments', segments)
       const fileName = segments.pop() || 'index'
-      console.log('segments', segments)
-      console.log('fileName', fileName)
-      console.log('pagePath', pagePath)
       // 仅当页面文件是 index.vue 时才查找同级 route.json
       const isIndexFile = pagePath.endsWith('/index.vue')
       const configPath = isIndexFile ? pagePath.replace(/\/index\.vue$/, '/route.json') : null // 非 index 文件不查找配置文件
-      console.log('configPath', configPath)
-      console.log('configFiles', configFiles)
       let jsonConfig = {}
       if (configFiles[configPath]) {
         jsonConfig = (await configFiles[configPath]()).default || {}
       }
-      console.log('configPath', configPath)
-      console.log('jsonConfig', jsonConfig)
       const mergedMeta = {
         requiresAuth: fileName.startsWith('Auth'),
         layout: segments.includes('admin') ? 'AdminLayout' : 'DefaultLayout',
         ...jsonConfig.meta,
         ...routeBlockConfig.meta,
       }
-      console.log('mergedMeta', mergedMeta)
 
       const route = {
         path: generateNestedPath(segments, fileName),
@@ -83,32 +71,23 @@ export async function generateRoutes() {
         props: jsonConfig.props || routeBlockConfig.props,
         children: [],
       }
-      console.log('route', route)
 
       // 嵌套路由处理
       if (segments.length > 0) {
         const parentPath = `/${segments.join('/')}`
-        console.log('parentPath', parentPath)
-        console.log('routes', routes)
         let parentRoute = routes.find((r) => r.path === parentPath)
-        console.log('parentRoute', parentRoute)
-        console.log('layoutComponents', layoutComponents)
-        console.log('mergedMeta.layout', mergedMeta.layout)
         if (!parentRoute) {
           parentRoute = {
             path: parentPath,
             component: layoutComponents[mergedMeta.layout],
             children: [],
           }
-          console.log('!parentRoute', 'parentRoute', parentRoute)
           routes.push(parentRoute)
         }
         parentRoute.children.push(route)
       } else {
         routes.push(route)
       }
-      console.log('routes', routes)
-      console.log('——分割线——')
     } catch (error) {
       console.error(`Failed to process route ${pagePath}:`, error)
     }
@@ -117,9 +96,7 @@ export async function generateRoutes() {
   // 根路径处理
   // 场景一：自动处理 index.vue 生成根路由
   // 场景二：添加默认重定向逻辑
-  console.log('routes', routes)
   const rootRoute = routes.find((r) => r.path === '/')
-  console.log('rootRoute', rootRoute)
   if (!rootRoute) {
     routes.push({
       path: '/',
