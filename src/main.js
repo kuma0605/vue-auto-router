@@ -22,6 +22,8 @@ const router = createAutoRouter({
   },
 })
 
+console.log('生成的路由配置:', router.getRoutes())
+
 // 设置路由守卫
 setupRouterGuards(router)
 

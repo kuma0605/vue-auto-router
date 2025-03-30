@@ -144,16 +144,21 @@ function organizeNestedRoutes(routes, routeMap) {
 
     // 如果有子路由，设置嵌套关系
     if (childrenPaths.length > 0) {
-      // 创建子路由数组
-      parentRoute.children = childrenPaths.map((childPath) => {
-        const childRoute = routeMap.get(childPath)
-        // 调整子路由路径，移除父路径部分
-        childRoute.path = childRoute.path.replace(parentPath, '') || '/'
-        return childRoute
-      })
+      // 确保父路由有children数组
+      parentRoute.children = parentRoute.children || []
 
-      // 从主路由数组中移除已成为子路由的路由
+      // 遍历所有子路由
       for (const childPath of childrenPaths) {
+        const childRoute = { ...routeMap.get(childPath) }
+
+        // 将子路由添加到父路由的children中
+        parentRoute.children.push({
+          ...childRoute,
+          // 保持路径以/开头，但移除父路径部分
+          path: childRoute.path.replace(parentPath, ''),
+        })
+
+        // 从主路由数组中移除已成为子路由的路由
         const index = routes.findIndex((r) => r.path === childPath)
         if (index !== -1) {
           routes.splice(index, 1)

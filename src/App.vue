@@ -1,14 +1,9 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
   <div id="app">
     <header>
       <h1>Vue 自动路由示例</h1>
     </header>
-    
+
     <!-- 面包屑导航 -->
     <div class="breadcrumbs" v-if="breadcrumbs.length > 1">
       <span v-for="(crumb, index) in breadcrumbs" :key="index">
@@ -19,7 +14,7 @@ import HelloWorld from './components/HelloWorld.vue'
         <span v-if="index < breadcrumbs.length - 1"> &gt; </span>
       </span>
     </div>
-    
+
     <!-- 路由视图 -->
     <main>
       <router-view v-slot="{ Component }">
@@ -35,7 +30,7 @@ import HelloWorld from './components/HelloWorld.vue'
         </transition>
       </router-view>
     </main>
-    
+
     <footer>
       <p>&copy; 2023 Vue 自动路由示例</p>
     </footer>
@@ -103,69 +98,5 @@ footer {
   justify-content: center;
   align-items: center;
   height: 200px;
-}
-</style>
-
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
 }
 </style>
