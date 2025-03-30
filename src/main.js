@@ -1,19 +1,33 @@
 import './assets/main.css'
 import { createApp } from 'vue'
 import { createAutoRouter } from './router'
+import { setupRouterGuards } from './router/guards'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 
-async function initApp() {
-  const app = createApp(App)
-  const router = await createAutoRouter()
+// 创建应用实例
+const app = createApp(App)
 
-  app.use(createPinia())
-  app.use(router)
-
-  app.mount('#app')
-}
-
-initApp().catch((error) => {
-  console.error('Application initialization failed:', error)
+// 创建自动路由
+const router = createAutoRouter({
+  // 可选配置
+  extendRoutes: (routes) => {
+    // 这里可以修改或添加路由
+    // 例如添加重定向
+    routes.push({
+      path: '/home',
+      redirect: '/',
+    })
+    return routes
+  },
 })
+
+// 设置路由守卫
+setupRouterGuards(router)
+
+// 使用插件
+app.use(router)
+app.use(createPinia())
+
+// 挂载应用
+app.mount('#app')
