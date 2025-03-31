@@ -393,7 +393,9 @@ export function autoRoutesPlugin(options = {}) {
     if (viteServer) {
       const mod = viteServer.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID)
       if (mod) viteServer.moduleGraph.invalidateModule(mod)
-      console.log('[自动路由] 虚拟模块已失效.')
+      console.log('[自动路由] 路由已生成/更新，虚拟模块准备就绪.')
+      // console.log('[自动路由] 路由规则已更新，等待应用.')
+      // console.log('[自动路由] 路由更新完成.')
     }
   }
 

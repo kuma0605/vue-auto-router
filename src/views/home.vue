@@ -1,6 +1,6 @@
 <route lang="json">
 {
-  "name": "home",
+  "name": "home1",
   "meta": {
     "requiresAuth": true
   }
