@@ -21,7 +21,7 @@ export default defineConfig({
     autoRoutesPlugin({
       pagesDir: 'src/views', // 页面组件目录
       layoutFileName: '_layout.vue', // 布局文件名
-      strict: false, // 设置是否启用严格模式 (true 或 false)
+      strict: true, // 设置是否启用严格模式 (true 或 false)
       // routeBlockLang: 'yaml'   // 如果只想解析特定 lang 的 <route> 块
     }),
   ],
