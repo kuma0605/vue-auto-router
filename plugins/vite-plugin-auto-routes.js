@@ -6,7 +6,7 @@ import { parse } from '@vue/compiler-sfc'
 import yaml from 'js-yaml'
 import { v5 as uuidv5 } from 'uuid'
 
-// --- JSDoc Type Definitions (Optional but helpful for documentation/editors) ---
+// --- JSDoc Type Definitions ---
 /**
  * @typedef {object} RouteMeta
  * @property {boolean} [requiresAuth]
@@ -52,7 +52,6 @@ function reportError(message, level, strict, server) {
   } else {
     if (level === 'error') {
       console.error(fullMessage)
-      // Attempt to show error overlay in dev mode
       server?.ws.send({
         type: 'error',
         err: { message: fullMessage, stack: '', plugin: 'vite-plugin-auto-routes' },
@@ -65,44 +64,37 @@ function reportError(message, level, strict, server) {
 
 // --- RouteValidator Class ---
 class RouteValidator {
-  /**
-   * @param {Record<string, any>} meta
-   * @param {string} filePath
-   * @param {boolean} strict
-   */
+  /** @param {Record<string, any>} meta */
+  /** @param {string} filePath */
+  /** @param {boolean} strict */
   static validateMeta(meta = {}, filePath, strict) {
     const errors = []
     if ('requiresAuth' in meta && typeof meta.requiresAuth !== 'boolean') {
       errors.push('"requiresAuth" 必须是布尔值')
     }
-    // ... more validations ...
+    if ('layout' in meta && typeof meta.layout !== 'string') {
+      errors.push('"layout" 必须是字符串')
+    }
+    if ('permissions' in meta && !Array.isArray(meta.permissions)) {
+      errors.push('"permissions" 必须是字符串数组')
+    }
     if (errors.length > 0) {
       reportError(`路由元数据验证失败: ${filePath}\n  - ${errors.join('\n  - ')}`, 'warn', strict)
     }
   }
 
-  /**
-   * @param {string} routePath
-   * @param {string} filePath
-   * @param {boolean} strict
-   * @returns {boolean} Validation status
-   */
+  /** @param {string} routePath */
+  /** @param {string} filePath */
+  /** @param {boolean} strict */
+  /** @returns {boolean} */
   static validatePath(routePath, filePath, strict) {
     let isValid = true
     if (typeof routePath !== 'string' || !routePath.startsWith('/')) {
-      reportError(
-        `路径验证失败: ${filePath}\n  - 生成的或指定的路径无效: "${routePath}" (必须是字符串且以 / 开头)`,
-        'error',
-        strict,
-      )
+      reportError(`路径验证失败: ${filePath}\n  - 路径无效: "${routePath}"`, 'error', strict)
       isValid = false
     }
     if (/\s/.test(routePath)) {
-      reportError(
-        `路径验证失败: ${filePath}\n  - 路由路径包含空格: "${routePath}"`,
-        'error',
-        strict,
-      )
+      reportError(`路径验证失败: ${filePath}\n  - 路径含空格: "${routePath}"`, 'error', strict)
       isValid = false
     }
     return isValid
@@ -130,9 +122,9 @@ export function autoRoutesPlugin(options = {}) {
   const pagesDirPath = path.resolve(process.cwd(), pagesDir)
   let generatedRoutesCode = 'export const routes = [];'
   /** @type {import('vite').ViteDevServer | undefined} */
-  let viteServer // Hold server instance
+  let viteServer
 
-  // --- Helper Functions (generateRoutePath, generateRouteName, calculatePriority - remain the same conceptually) ---
+  // --- Helper Functions ---
   const generateRoutePath = (filePath) => {
     const relativePath = path.relative(pagesDirPath, filePath)
     let routePath = `/${relativePath}`
@@ -165,11 +157,6 @@ export function autoRoutesPlugin(options = {}) {
     if (routePath.includes('(.*)')) score -= 20
     return score
   }
-
-  /**
-   * @param {string} componentPath
-   * @returns {Promise<{config: Record<string, any>, line: number} | null>}
-   */
   const parseRouteBlock = async (componentPath) => {
     let content = ''
     try {
@@ -178,20 +165,16 @@ export function autoRoutesPlugin(options = {}) {
       const block = descriptor.customBlocks.find(
         (b) => b.type === 'route' && (routeBlockLang === null || b.lang === routeBlockLang),
       )
-
       if (!block?.content)
         return {
           config: { meta: { __source: path.relative(process.cwd(), componentPath) + ':0' } },
           line: 0,
         }
-
       const isYaml =
         block.content.trim().startsWith('---') || block.lang === 'yaml' || block.lang === 'yml'
       const config = (isYaml ? yaml.load(block.content) : JSON.parse(block.content)) || {}
-
       config.meta = config.meta || {}
       config.meta.__source = `${path.relative(process.cwd(), componentPath)}:${block.loc.start.line}`
-
       return { config, line: block.loc.start.line }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -201,11 +184,9 @@ export function autoRoutesPlugin(options = {}) {
         strict,
         viteServer,
       )
-      return null // Signal failure
+      return null
     }
   }
-
-  /** @param {string} layoutFile */
   const checkLayoutForRouterView = (layoutFile) => {
     try {
       const content = fs.readFileSync(layoutFile, 'utf-8')
@@ -223,7 +204,7 @@ export function autoRoutesPlugin(options = {}) {
     }
   }
 
-  /** @returns {Promise<RouteDefinitionInternal[]>} */
+  // --- Core Logic ---
   const generateRoutesDefinition = async () => {
     const [pageFiles, layoutFiles] = await Promise.all([
       fg([`${pagesDirPath}/**/*.vue`], {
@@ -233,12 +214,10 @@ export function autoRoutesPlugin(options = {}) {
       }),
       fg([`${pagesDirPath}/**/${layoutFileName}`], { absolute: true, onlyFiles: true }),
     ])
-
     /** @type {RouteDefinitionInternal[]} */
     const routeDefs = []
     const processedLayoutPaths = new Set()
-
-    // 1. Process Layout Files
+    // 1. Process Layouts
     for (const layoutFile of layoutFiles) {
       if (processedLayoutPaths.has(layoutFile)) continue
       const parseResult = await parseRouteBlock(layoutFile)
@@ -262,8 +241,7 @@ export function autoRoutesPlugin(options = {}) {
       })
       processedLayoutPaths.add(layoutFile)
     }
-
-    // 2. Process Page Files
+    // 2. Process Pages
     for (const pageFile of pageFiles) {
       const parseResult = await parseRouteBlock(pageFile)
       if (!parseResult) continue
@@ -273,16 +251,13 @@ export function autoRoutesPlugin(options = {}) {
       if (!RouteValidator.validatePath(finalPath, config.meta?.__source || pageFile, strict))
         continue
       RouteValidator.validateMeta(config.meta, config.meta?.__source || pageFile, strict)
-
-      /** @type {RouteDefinitionInternal} */
-      const routeDef = {
+      /** @type {RouteDefinitionInternal} */ const routeDef = {
         path: finalPath,
         componentPath: pageFile,
         name: config.name || generateRouteName(pageFile),
         routeConfig: config,
         priority: calculatePriority(finalPath),
       }
-
       let parentLayout
       let maxMatchLength = -1
       for (const layoutDef of routeDefs) {
@@ -305,7 +280,6 @@ export function autoRoutesPlugin(options = {}) {
         routeDefs.push(routeDef)
       }
     }
-
     // 3. Filter & Sort
     const finalRoutes = routeDefs.filter(
       (r) => !r.isLayout || (r.isLayout && r.children && r.children.length > 0),
@@ -319,14 +293,11 @@ export function autoRoutesPlugin(options = {}) {
     }
     return sortRoutes(finalRoutes)
   }
-
-  // --- Duplicate Name Check ---
-  /** @param {RouteDefinitionInternal[]} routes */
   const checkForDuplicateNames = (routes) => {
-    /** @type {{ name: string, source: string }[]} */
-    const names = []
-    /** @param {RouteDefinitionInternal[]} currentRoutes */
-    const collectNames = (currentRoutes) => {
+    /** @type {{ name: string, source: string }[]} */ const names = []
+    /** @param {RouteDefinitionInternal[]} currentRoutes */ const collectNames = (
+      currentRoutes,
+    ) => {
       for (const route of currentRoutes) {
         if (route.name)
           names.push({
@@ -341,7 +312,7 @@ export function autoRoutesPlugin(options = {}) {
     for (const { name, source } of names) {
       if (nameMap.has(name)) {
         reportError(
-          `发现重复的路由名称: "${name}"。\n  - 首次使用于: ${nameMap.get(name)}\n  - 同时使用于: ${source}`,
+          `发现重复的路由名称: "${name}"。\n  - 首次: ${nameMap.get(name)}\n  - 重复: ${source}`,
           'error',
           strict,
           viteServer,
@@ -351,9 +322,6 @@ export function autoRoutesPlugin(options = {}) {
       }
     }
   }
-
-  // --- Code Generation ---
-  /** @param {RouteDefinitionInternal[]} routes */
   const generateModuleCode = (routes) => {
     const generateRouteCode = (routeDefs) => {
       return `[${routeDefs
@@ -375,7 +343,6 @@ export function autoRoutesPlugin(options = {}) {
             .join(',\n')}${Object.keys(restConfig).length > 0 ? ',' : ''} }`
           if (route.children?.length > 0) {
             const childrenCode = generateRouteCode(route.children)
-            // Insert children code correctly, ensuring trailing comma if needed
             routeObject = routeObject.slice(0, -1) + `, children: ${childrenCode} }`
           }
           return routeObject
@@ -385,7 +352,7 @@ export function autoRoutesPlugin(options = {}) {
     return `export const routes = ${generateRouteCode(routes)};`
   }
 
-  // --- Trigger Route Regeneration ---
+  // --- Trigger Route Regeneration (no internal log) ---
   async function regenerateRoutes() {
     const routes = await generateRoutesDefinition()
     checkForDuplicateNames(routes)
@@ -393,9 +360,6 @@ export function autoRoutesPlugin(options = {}) {
     if (viteServer) {
       const mod = viteServer.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID)
       if (mod) viteServer.moduleGraph.invalidateModule(mod)
-      console.log('[自动路由] 路由已生成/更新，虚拟模块准备就绪.')
-      // console.log('[自动路由] 路由规则已更新，等待应用.')
-      // console.log('[自动路由] 路由更新完成.')
     }
   }
 
@@ -412,28 +376,32 @@ export function autoRoutesPlugin(options = {}) {
     load(id) {
       if (id === RESOLVED_VIRTUAL_MODULE_ID) return generatedRoutesCode
     },
+
     async buildStart() {
       try {
         await regenerateRoutes()
+        // Log message after successful initial generation
+        console.log('[自动路由] 初始路由配置完成.') // <--- Added this log
       } catch (error) {
         if (!strict) console.error('[自动路由] buildStart 失败:', error)
         else throw error
       }
     },
+
     async handleHotUpdate({ file, server }) {
       const pagesDirRelative = path.relative(process.cwd(), pagesDirPath)
+      // Check if the changed file is within the configured pagesDir
       if (file.startsWith(path.join(process.cwd(), pagesDirRelative) + path.sep)) {
         console.log(`[自动路由] 文件变更: ${path.relative(process.cwd(), file)}...`)
-        viteServer = server
+        viteServer = server // Ensure server instance is up-to-date
         try {
-          await regenerateRoutes()
-          server.ws.send({ type: 'full-reload', path: '*' })
-          console.log('[自动路由] 路由更新，页面将重载。')
+          await regenerateRoutes() // Regenerate routes silently
+          server.ws.send({ type: 'full-reload', path: '*' }) // Trigger full reload
+          // Consolidated HMR log message
+          console.log('[自动路由] 路由已更新，正在重新加载页面...')
         } catch (error) {
-          if (!strict)
-            console.error(
-              '[自动路由] HMR 失败 (详细信息见上).',
-            ) /* Error reporting handled by reportError */
+          // Error reporting/throwing is handled within regenerateRoutes via reportError
+          if (!strict) console.error(`[自动路由] HMR 失败 (详细信息见上).`)
         }
       }
     },
